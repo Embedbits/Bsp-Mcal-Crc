@@ -315,6 +315,7 @@ void Ut_Crc_Services_NotInitialized_ReturnError( void )
     TEST_ASSERT_EQUAL( CRC_REQUEST_ERROR, Crc_Get_TransferCpltState( UT_CRC_ID, &funcState ) );
     TEST_ASSERT_EQUAL( CRC_REQUEST_ERROR, Crc_Set_HalfTransferActive( UT_CRC_ID ) );
     TEST_ASSERT_EQUAL( CRC_REQUEST_ERROR, Crc_Get_HalfTransferState( UT_CRC_ID, &funcState ) );
+    TEST_ASSERT_EQUAL( CRC_REQUEST_ERROR, Crc_Set_HalfTransferInactive( UT_CRC_ID ) );
     TEST_ASSERT_EQUAL( CRC_REQUEST_ERROR, Crc_Set_TransferErrorActive( UT_CRC_ID ) );
     TEST_ASSERT_EQUAL( CRC_REQUEST_ERROR, Crc_Get_TransferErrorState( UT_CRC_ID, &funcState ) );
 
@@ -906,6 +907,7 @@ void Ut_Crc_DmaTransferCplt_EndsTransferAndCallsCallback( void )
  * - Callback not configured: state inactive, handler does nothing.
  * - Callback set and activated: getters return it, handler calls it once,
  *   transfer stays busy.
+ * - Deactivated: state inactive, handler does not call it.
  */
 void Ut_Crc_DmaHalfTransfer_CallsActiveCallback( void )
 {
@@ -941,6 +943,12 @@ void Ut_Crc_DmaHalfTransfer_CallsActiveCallback( void )
 
     TEST_ASSERT_EQUAL( CRC_REQUEST_OK, Crc_Get_TransferState( UT_CRC_ID, &xferState ) );
     TEST_ASSERT_EQUAL( CRC_TRANSFER_BUSY, xferState );
+
+    TEST_ASSERT_EQUAL( CRC_REQUEST_OK, Crc_Set_HalfTransferInactive( UT_CRC_ID ) );
+    TEST_ASSERT_EQUAL( CRC_REQUEST_OK, Crc_Get_HalfTransferState( UT_CRC_ID, &funcState ) );
+    TEST_ASSERT_EQUAL( CRC_FUNCTION_INACTIVE, funcState );
+    utCrc_DmaConfig.HalfTransferIsr();
+    TEST_ASSERT_EQUAL_UINT32( 1u, utCrc_HalfTransferCnt );
 
     TEST_ASSERT_EQUAL( CRC_REQUEST_ERROR, Crc_Get_HalfTransferIsr( UT_CRC_ID, NULL ) );
 }
