@@ -1,4 +1,4 @@
-# Template version: 1.0.0
+# Template version: 0.0.1
 # Sets the version of CMakeLists.txt file.
 # Never, under any circumstances, change this line. It is used by
 # the module generation script to identify the template version.
@@ -18,27 +18,26 @@ set( Crc_PrivateIncludeDirs
 
 # Source files list for current library generation
 set( Crc_SourceFiles
-    Crc.c 
+    Crc.c
 )
 
 
 # List of public header files provided by the current library
 set( Crc_PublicHeaders 
     Crc_Types.h
-    Crc_Port.h 
+    Crc_Port.h
 )
 
 
 # List of dependent libraries that are publicly used by the current library
 set( Crc_PublicDependentLibs
-     
+    Ral_Lib
+    Gpdma_Lib
 )
 
 
 # List of dependent libraries that are privately used by the current library
 set( Crc_PrivateDependentLibs
-    Ral_Lib
-    Gpdma_Lib
     Rcc_Lib
 )
 
@@ -81,10 +80,9 @@ target_include_directories( Crc_Lib
     PUBLIC
         $<BUILD_INTERFACE:${PUBLIC_HEADERS_DIR}>
         $<INSTALL_INTERFACE:include>
-        Crc_PublicIncludeDirs
+        ${Crc_PublicIncludeDirs}
     PRIVATE
-        ${Crc_IncludeDirs}
-        Crc_PrivateIncludeDirs
+        ${Crc_PrivateIncludeDirs}
 )
 
 
@@ -94,4 +92,14 @@ message(STATUS "Crc_Lib library created")
 #========================= Documentation configuration ========================#
 if(DOXYGEN_AVAILABLE STREQUAL "ON")
     Doxygen_AddPath("${CMAKE_CURRENT_SOURCE_DIR}/")
+endif()
+
+#========================= Unit tests configuration ===========================#
+if(UNIT_TESTING_AVAILABLE STREQUAL "ON")
+    UnitTesting_AddPath("${CMAKE_CURRENT_SOURCE_DIR}/Tests/UnitTests")
+endif()
+
+#===================== Integration tests configuration ========================#
+if(INTEGRATION_TESTING_AVAILABLE STREQUAL "ON")
+    IntegrationTesting_AddPath("${CMAKE_CURRENT_SOURCE_DIR}/Tests/IntegrationTests")
 endif()

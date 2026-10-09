@@ -1,10 +1,15 @@
 /**
+ * \defgroup Crc Crc
+ * \brief Crc module
+ */
+
+/**
  * \author Mr.Nobody
  * \file Crc_Types.h
  * \ingroup Crc
  * \brief Crc module global types definition
  *
- * This file contains the types definitions used across the module and are 
+ * This file contains the types definitions used across the module and are
  * available for other modules through Port file.
  *
  */
@@ -13,18 +18,15 @@
 #define CRC_CRC_TYPES_H
 /* ============================== INCLUDES ================================== */
 #include "stdint.h"                         /* Module types definition        */
-#include "Stm32_crc.h"                      /* CRC peripheral functionality   */
-#include "Gpdma_Port.h"                     /* GPDMA module types definition  */
+#include "Gpdma_Types.h"                    /* DMA types definitions          */
+#include "Stm32_crc.h"                      /* CRC RAL functionality          */
 /* ========================== SYMBOLIC CONSTANTS ============================ */
 
 /** Null pointer definition */
 #define CRC_NULL_PTR                        ( ( void* ) 0u )
 
-/** Default polynomial value (0x04C11DB7) */
-#define CRC_DEFAULT_POLY                    ( LL_CRC_DEFAULT_CRC32_POLY )
-
-/** Default initial value for CRC calculation (0xFFFFFFFF) */
-#define CRC_DEFAULT_INIT_VAL                ( LL_CRC_DEFAULT_CRC_INITVALUE )
+/** Maximal count of bytes of one non-blocking (GPDMA) calculation, see \ref Crc_Set_TransferStart */
+#define CRC_TRANSFER_DATA_CNT_MAX           ( 0xFFFFu )
 
 /* ========================== EXPORTED MACROS =============================== */
 
@@ -59,54 +61,6 @@ typedef enum
 }   crc_FunctionState_t;
 
 
-/** Flag states enumeration */
-typedef enum
-{
-    CRC_FLAG_INACTIVE = 0u, /**< Inactive flag state */
-    CRC_FLAG_ACTIVE         /**< Active flag state   */
-}   crc_FlagState_t;
-
-
-/** \brief CRC data type definition */
-typedef uint32_t crc_Data_t;
-
-
-/** \brief DMA interrupt priority type definition */
-typedef uint32_t crc_DmaIrqPrio_t;
-
-
-/** \brief Type representing count of data to be used in CRC calculation.
- */
-typedef uint32_t crc_BlockSize_t;
-
-
-/** \brief Type representing count of repetitions in single transfer (only for 2D transfers).
- *
- * This type specifies count of repetitions of single transfer (specified by
- * \ref crc_BlockSize_t) from source to destination. It is used only for
- * 2D transfers. This value can represent number of lines (rows) in 2D transfer.
- */
-typedef uint16_t crc_BlockRep_t;
-
-
-/** \brief List of possible errors */
-typedef enum
-{
-    CRC_ERROR_DMA = 0u, /**< DMA transfer error */
-    CRC_ERROR_CNT
-}   crc_ErrorId_t;
-
-
-/** \brief CRC input data size type definition */
-typedef enum
-{
-    CRC_DATA_8B = 0u, /**< 8bits data size            */
-    CRC_DATA_16B,     /**< 16bits data size           */
-    CRC_DATA_32B,     /**< 32bits data size           */
-    CRC_DATA_CNT      /**< Count of available options */
-}   crc_DataSize_t;
-
-
 /** Enumeration used to signal request processing state */
 typedef enum
 {
@@ -115,191 +69,200 @@ typedef enum
 }   crc_RequestState_t;
 
 
-/** Peripheral identification */
+/** Flag states enumeration */
 typedef enum
 {
-    CRC_PERIPH_1 = 0u, /**< CRC peripheral 1 */
-    CRC_PERIPH_CNT
+    CRC_FLAG_INACTIVE = 0u, /**< Inactive flag state */
+    CRC_FLAG_ACTIVE         /**< Active flag state   */
+}   crc_FlagState_t;
+
+
+/** CRC peripherals enumeration list */
+typedef enum
+{
+#if defined(CRC)
+    CRC_PERIPH_1 = 0u, /**< CRC peripheral 1 ID */
+#endif /* CRC */
+    CRC_PERIPH_CNT     /**< Count of CRC peripherals */
 }   crc_PeriphId_t;
 
 
-/** Data transfer handling style enumeration */
-typedef enum
-{
-    CRC_TRANSFER_NONE = 0u, /**< No data transfer handling style is used. User must handle data transfer by himself. */
-    CRC_TRANSFER_BLOCKING,  /**< Blocking style is used and is handled by module task function.                      */
-    CRC_TRANSFER_DMA,       /**< DMA is used for data transfer                                                       */
-    CRC_TRANSFER_CNT        /**< Count of available options                                                          */
-}   crc_TransferStyle_t;
+/** \brief Type used to store CRC values (polynomial, initial value, result) */
+typedef uint32_t crc_Data_t;
 
 
-/** \brief Input data format configuration */
-typedef enum
-{
-    CRC_IN_DATA_NORMAL       = LL_CRC_INDATA_REVERSE_NONE,     /**< Input data are not inverted       */
-    CRC_IN_DATA_8B_INVERTED  = LL_CRC_INDATA_REVERSE_BYTE,     /**< Input data are inverted by 8bits  */
-    CRC_IN_DATA_16B_INVERTED = LL_CRC_INDATA_REVERSE_HALFWORD, /**< Input data are inverted by 16bits */
-    CRC_IN_DATA_32B_INVERTED = LL_CRC_INDATA_REVERSE_WORD      /**< Input data are inverted by 32bits */
-}   crc_InDataOrder_t;
+/** \brief Type used to store count of data bytes */
+typedef uint32_t crc_DataCnt_t;
 
 
-/** \brief Output data format */
-typedef enum
-{
-    CRC_DATA_NORMAL = 0u, /**< Data bit order is standard */
-    CRC_DATA_INVERTED     /**< Data bit order is inverted */
-}   crc_OutDataOrder_t;
+/** \brief Type of one byte of input data buffer */
+typedef uint8_t crc_DataByte_t;
 
 
-/** \brief CRC polynomial size configuration. */
-typedef enum
-{
-    CRC_POLY_SIZE_32 = 0u, /**< CRC polynomial size is 32bits */
-    CRC_POLY_SIZE_16,      /**< CRC polynomial size is 16bits */
-    CRC_POLY_SIZE_8,       /**< CRC polynomial size is 8bits  */
-    CRC_POLY_SIZE_7        /**< CRC polynomial size is 7bits  */
-}   crc_PolySize_t;
+/** \brief Type used to store value of independent data register */
+typedef uint32_t crc_IndepData_t;
 
 
-/**
- * \brief Type definition for calculation finished callback from ISR in DMA mode
+/** Input data item size enumeration.
  *
- * \return Value of calculated CRC
+ * Data buffer is processed as an array of items of this size in native (little
+ * endian) memory order, every item is written to the data register by one access.
+ * Byte stream algorithms (e.g. CRC-32 Ethernet) shall use \ref CRC_INPUT_SIZE_8BITS.
  */
-typedef void ( crc_CalcCompleteIsr_t )( crc_Data_t );
+typedef enum
+{
+    CRC_INPUT_SIZE_8BITS = 0u, /**< Data items of 8 bits  */
+    CRC_INPUT_SIZE_16BITS,     /**< Data items of 16 bits */
+    CRC_INPUT_SIZE_32BITS,     /**< Data items of 32 bits */
+    CRC_INPUT_SIZE_CNT         /**< Count of input data sizes */
+}   crc_InputSize_t;
 
 
-/**
- * \brief Type definition for calculation finished callback from ISR in DMA mode
+/** Polynomial (and result) size enumeration */
+typedef enum
+{
+    CRC_DATA_SIZE_7BITS = 0u, /**< 7 bits polynomial  */
+    CRC_DATA_SIZE_8BITS,      /**< 8 bits polynomial  */
+    CRC_DATA_SIZE_16BITS,     /**< 16 bits polynomial */
+    CRC_DATA_SIZE_32BITS,     /**< 32 bits polynomial */
+    CRC_DATA_SIZE_CNT         /**< Count of polynomial sizes */
+}   crc_DataSize_t;
+
+
+/** Data bit order enumeration.
  *
- * \return Value of calculated CRC
+ * Input data supports every option. Output data (result) supports only
+ * \ref CRC_DATA_ORDER_NORMAL and \ref CRC_DATA_ORDER_REV_WORD (bit-reversed result).
  */
-typedef void ( crc_ErrorIsr_t )( crc_ErrorId_t );
+typedef enum
+{
+    CRC_DATA_ORDER_NORMAL = 0u,  /**< Bit order not affected        */
+    CRC_DATA_ORDER_REV_BYTE,     /**< Bit reversal done by byte      */
+    CRC_DATA_ORDER_REV_HALFWORD, /**< Bit reversal done by half-word */
+    CRC_DATA_ORDER_REV_WORD,     /**< Bit reversal done by word      */
+    CRC_DATA_ORDER_CNT           /**< Count of data order options    */
+}   crc_DataOrder_t;
 
 
+/** Non-blocking (GPDMA) calculation state enumeration */
+typedef enum
+{
+    CRC_TRANSFER_IDLE = 0u, /**< No transfer is running, result can be read */
+    CRC_TRANSFER_BUSY,      /**< Data are fed to the CRC unit by GPDMA      */
+    CRC_TRANSFER_ERROR      /**< Last transfer was stopped by GPDMA error   */
+}   crc_TransferState_t;
+
+
+/** DMA peripherals enumeration list */
+typedef enum
+{
+#if defined(GPDMA1)
+    CRC_DMA_PERIPH_1 = GPDMA_PERIPH_1, /**< DMA peripheral 1 identification */
+#endif
+#if defined(GPDMA2)
+    CRC_DMA_PERIPH_2 = GPDMA_PERIPH_2, /**< DMA peripheral 2 identification */
+#endif
+    CRC_DMA_PERIPH_CNT                 /**< Count of DMA peripherals        */
+}   crc_DmaPeriphId_t;
+
+
+/** Enumeration of available channels for all DMA peripherals */
+typedef enum
+{
+    CRC_DMA_CHANNEL_0  = GPDMA_CHANNEL_0,  /**< DMA transfer channel 0 (FIFO size 8 bytes) linear addressing mode        */
+    CRC_DMA_CHANNEL_1  = GPDMA_CHANNEL_1,  /**< DMA transfer channel 1 (FIFO size 8 bytes) linear addressing mode        */
+    CRC_DMA_CHANNEL_2  = GPDMA_CHANNEL_2,  /**< DMA transfer channel 2 (FIFO size 8 bytes) linear addressing mode        */
+    CRC_DMA_CHANNEL_3  = GPDMA_CHANNEL_3,  /**< DMA transfer channel 3 (FIFO size 8 bytes) linear addressing mode        */
+    CRC_DMA_CHANNEL_4  = GPDMA_CHANNEL_4,  /**< DMA transfer channel 4 (FIFO size 32 bytes) linear addressing mode       */
+    CRC_DMA_CHANNEL_5  = GPDMA_CHANNEL_5,  /**< DMA transfer channel 5 (FIFO size 32 bytes) linear addressing mode       */
+    CRC_DMA_CHANNEL_6  = GPDMA_CHANNEL_6,  /**< DMA transfer channel 6 (FIFO size 32 bytes) linear or 2D addressing mode */
+    CRC_DMA_CHANNEL_7  = GPDMA_CHANNEL_7,  /**< DMA transfer channel 7 (FIFO size 32 bytes) linear or 2D addressing mode */
+    CRC_DMA_CHANNEL_CNT                    /**< Count of available DMA channels                                          */
+}   crc_DmaChannelId_t;
+
+
+/** Channel priority options enumeration */
+typedef enum
+{
+    CRC_DMA_PRIORITY_LOW      = GPDMA_PRIORITY_LOW     , /**< Priority level : Low       */
+    CRC_DMA_PRIORITY_MEDIUM   = GPDMA_PRIORITY_MEDIUM  , /**< Priority level : Medium    */
+    CRC_DMA_PRIORITY_HIGH     = GPDMA_PRIORITY_HIGH    , /**< Priority level : High      */
+    CRC_DMA_PRIORITY_VERYHIGH = GPDMA_PRIORITY_VERYHIGH, /**< Priority level : Very_High */
+}   crc_DmaPriority_t;
+
+
+/** Non-blocking calculation error identification enumeration */
+typedef enum
+{
+    CRC_XFER_ERROR_DMA_TRANSFER = 0u,       /**< GPDMA data transfer error (bus error)   */
+    CRC_XFER_ERROR_DMA_CONFIG,              /**< GPDMA channel configuration error       */
+    CRC_XFER_ERROR_DMA_CONFIG_UPDATE,       /**< GPDMA linked-list update error          */
+    CRC_XFER_ERROR_DMA_TRIGGER_OVERRUN,     /**< GPDMA trigger overrun                   */
+    CRC_XFER_ERROR_CNT                      /**< Count of error identifications          */
+}   crc_XferErrorId_t;
+
+
+/** \brief Non-blocking calculation user callback (transfer complete, half transfer).
+ *
+ * Called from GPDMA interrupt context.
+ */
+typedef void ( crc_CalcCompleteIsr_t )( void );
+
+
+/** \brief Non-blocking calculation error user callback.
+ *
+ * Called from GPDMA interrupt context once for every reported error, after the
+ * transfer was stopped (state \ref CRC_TRANSFER_ERROR).
+ */
+typedef void ( crc_TransferErrorIsr_t )( crc_XferErrorId_t errorId );
+
+
+/** \brief Type used to store CRC configuration */
 typedef struct
 {
-    /** DMA peripheral identification used for CRC bus.
-     * User can configure which DMA bus will be used for data transfer. */
-    gpdma_PeriphId_t         DmaPeriphId;
+    /** CRC peripheral identification */
+    crc_PeriphId_t          PeriphId;
 
-    /** DMA peripheral channel used for CRC bus.
-     * CRC bus use only one channel of bus BUT it is memory-to-memory mode.
-     * (Really "awesome" job ST) And because there is only one memory-to-memory
-     * trigger, user shall avoid other memory-to-memory transfers. */
-    gpdma_ChannelId_t        DmaChannelId;
+    /** Polynomial coefficients without the highest bit (e.g. 0x04C11DB7 for CRC-32).
+     *  Must be odd (even polynomials are not supported by HW) and fit into \ref PolySize. */
+    crc_Data_t              Polynomial;
 
-    /** DMA peripheral channel priority used for CRC bus.
-     * User can configure priority for DMA channel. This can prioritize current
-     * channel in front of other transfers in same DMA bus. */
-    gpdma_Priority_t         DmaChannelPrio;
+    /** Polynomial size, the result has the same size */
+    crc_DataSize_t          PolySize;
 
-    /**< DMA interrupt priority */
-    crc_DmaIrqPrio_t         IrqPrio;
+    /** Initial value of the calculation. Only bits within \ref PolySize are used. */
+    crc_Data_t              InitValue;
 
-    /** Trigger type configuration.
-     * If not used set to \ref GPDMA_TRG_NOT_USED and other trigger
-     * configurations will be ignored. */
-    gpdma_TrgType_t          TriggerType;
-    /** Trigger source identification. */
-    gpdma_TrgSrcId_t         TriggerSource;
-    /** Trigger mode configuration. */
-    gpdma_TriggerMode_t      TriggerMode;
+    /** Input data bit order */
+    crc_DataOrder_t         InputDataOrder;
 
-    /** Transfer lock mode.
-     * User can select if another X-fers can be added to current channel or not.
-     */
-    gpdma_XferListLock_t     DmaTransferLockState;
+    /** Output data (result) bit order, \ref CRC_DATA_ORDER_NORMAL or \ref CRC_DATA_ORDER_REV_WORD */
+    crc_DataOrder_t         OutputDataOrder;
 
-    /** Execution style of transfer list.
-     * User can select if transfer list will be executed once or continuously. */
-    gpdma_XferListExecMode_t XferListExecMode;
+    /** Input data item size (data register access width) */
+    crc_InputSize_t         InputDataSize;
 
-    /** Event generation mode.
-     * User can select if events will be generated by half or full transfer. */
-    gpdma_TransferEvent_t    EventMode;
+    /** Non-blocking calculation (data fed by GPDMA channel). \ref CRC_FUNCTION_INACTIVE
+     *  disables \ref Crc_Set_TransferStart and following DMA items are ignored. */
+    crc_FunctionState_t     DmaState;
 
-}   crc_DmaConfig_t;
+    /** GPDMA peripheral used for non-blocking calculation */
+    crc_DmaPeriphId_t       DmaPeriphId;
 
+    /** GPDMA channel used for non-blocking calculation */
+    crc_DmaChannelId_t      DmaChannelId;
 
-/** \brief CRC peripheral configuration structure */
-typedef struct
-{
-    /** CRC peripheral identification.
-     * Currently only one peripheral is available. */
-    crc_PeriphId_t        PeriphId;
+    /** GPDMA channel priority */
+    crc_DmaPriority_t       DmaPriority;
 
-    /** CRC input data order (normal/inverted) */
-    crc_InDataOrder_t     InputDataOrder;
+    /** Transfer complete user callback, can be NULL. Activated by \ref Crc_Init if set. */
+    crc_CalcCompleteIsr_t  *TransferCpltIsr;
 
-    /** CRC output data order (normal/inverted) */
-    crc_OutDataOrder_t    OutputDataOrder;
+    /** Half transfer user callback, can be NULL. Activated by \ref Crc_Init if set. */
+    crc_CalcCompleteIsr_t  *HalfTransferIsr;
 
-    /** CRC polynomial value.
-     * User can configure polynomial for CRC calculation. Default value is
-     * \ref CRC_DEFAULT_POLY */
-    uint32_t              PolynomialValue;
-
-    /** CRC calculation polynomial data size.
-     * This value only describes the usage of polynomial. The calculation itself
-     * depends on data size written into data register. */
-    crc_PolySize_t        PolynomialSize;
-
-    /** CRC calculation initial value.
-     * User can configure CRC initial value for calculation. Default value is
-     * \ref LL_CRC_DEFAULT_CRC_INITVALUE */
-    uint32_t              InitialValue;
-
-    /** Data transfer style.
-     * For current MCU, no interrupts are supported by HW. DMA data transfer is
-     * possible only in memory-to-memory mode (really "great" job ST (sarcasm)).
-     * User must avoid memory-to-memory elsewhere. */
-    crc_TransferStyle_t   TransferStyle;
-
-    /** Bit size of data written into CRC unit. */
-    crc_DataSize_t        InDataSize;
-
-    /** Size of input data block used for CRC calculation.
-     * In DMA mode, the value is limited by \ref gpdma_BlockSize_t.
-     * In blocking mode, is the value limited by size of data type. */
-    crc_BlockSize_t       InBlockSize;
-    /** Count of block repetitions.
-     * In DMA mode, is this option available only for 2D transfers. The size is
-     * limited by \ref gpdma_BlockRep_t. For linear transfers this value must
-     * be 0.
-     * In Blocking mode, is the value limited by size of data type. */
-    crc_BlockRep_t        InBlockRepetitionCount;
-
-    /** Size of single block processed during one access.
-     * In DMA mode, the value is limited by \ref gpdma_BurstLength_t.
-     * In Blocking mode is the value limited by size of data type. */
-    crc_BlockSize_t       BurstProcessSize;
-
-    /** Address of variable holding input data array.
-     * In blocking mode, user must write data into CRC data register by himself.
-     * In non-blocking mode, this pointer is used by DMA for data transfer. */
-    uint32_t              InDataAddr;
-
-    /** Address of variable holding output data.
-     * If not configured, user must read data from CRC data register by himself.
-     * Otherwise this pointer is used by callback to return calculated CRC value. */
-    uint32_t              OutDataAddr;
-
-    /** Error callback pointer */
-    crc_ErrorIsr_t        *ErrorIsr;
-
-    /** Calculation complete ISR callback.
-     * Because ST did not connect this peripheral with NVIC and did not provide
-     * any flags or interrupts, only DMA mode is possible for non-blocking transfer.
-     * Thus is this callback executed, when DMA finish transfer of specified
-     * transfer count. */
-    crc_CalcCompleteIsr_t *CalcCompleteIsr;
-
-    /** DMA configuration structure.
-     * This structure contains all necessary information for DMA configuration
-     * and data transfer handling. */
-    crc_DmaConfig_t       DmaConfig;
-
+    /** Transfer error user callback, can be NULL. Activated by \ref Crc_Init if set. */
+    crc_TransferErrorIsr_t *TransferErrorIsr;
 }   crc_Config_t;
 
 /* ========================== EXPORTED VARIABLES ============================ */
