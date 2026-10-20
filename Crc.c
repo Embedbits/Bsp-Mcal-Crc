@@ -475,6 +475,7 @@ crc_RequestState_t Crc_Deinit( void )
 void Crc_Task( void )
 {
     /* Nothing to process */
+    return;
 }
 
 
