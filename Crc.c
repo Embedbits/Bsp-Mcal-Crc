@@ -2340,7 +2340,8 @@ static crc_RequestState_t Crc_Check_DataCnt( crc_PeriphId_t crcId, crc_DataCnt_t
 
 /**
  * \brief Writes data items to the data register (one access of the input data
- *        size per item, items assembled from bytes in little endian order).
+ *        size per item, little endian order): a 32-bit item is read by one
+ *        (unaligned) load, smaller items are assembled from bytes.
  *
  * \param crcId   [in]: CRC peripheral identification, must be valid
  * \param data    [in]: Pointer to data, must not be NULL
@@ -2352,26 +2353,33 @@ static void Crc_Set_DataItems( crc_PeriphId_t crcId, const crc_DataByte_t * cons
     const crc_InputSize_t inputSize = crc_PeriphContext[ crcId ].InputSize;
     const crc_DataCnt_t   itemSize  = crc_InputSizeLut[ inputSize ].ItemSize;
 
-    for( crc_DataCnt_t dataIdx = 0u; dataCnt > dataIdx; dataIdx += itemSize )
+    if( CRC_INPUT_SIZE_32BITS == inputSize )
     {
-        crc_Data_t itemValue = 0u;
+        /* Data need not be aligned - CMSIS unaligned read (single LDR) */
+        for( crc_DataCnt_t dataIdx = 0u; dataCnt > dataIdx; dataIdx += itemSize )
+        {
+            LL_CRC_FeedData32( periphReg, __UNALIGNED_UINT32_READ( &data[ dataIdx ] ) );
+        }
+    }
+    else
+    {
+        for( crc_DataCnt_t dataIdx = 0u; dataCnt > dataIdx; dataIdx += itemSize )
+        {
+            crc_Data_t itemValue = 0u;
 
-        for( crc_DataCnt_t byteIdx = 0u; itemSize > byteIdx; byteIdx ++ )
-        {
-            itemValue |= (crc_Data_t)data[ dataIdx + byteIdx ] << ( byteIdx * CRC_BITS_IN_BYTE );
-        }
+            for( crc_DataCnt_t byteIdx = 0u; itemSize > byteIdx; byteIdx ++ )
+            {
+                itemValue |= (crc_Data_t)data[ dataIdx + byteIdx ] << ( byteIdx * CRC_BITS_IN_BYTE );
+            }
 
-        if( CRC_INPUT_SIZE_32BITS == inputSize )
-        {
-            LL_CRC_FeedData32( periphReg, itemValue );
-        }
-        else if( CRC_INPUT_SIZE_16BITS == inputSize )
-        {
-            LL_CRC_FeedData16( periphReg, (uint16_t)itemValue );
-        }
-        else
-        {
-            LL_CRC_FeedData8( periphReg, (uint8_t)itemValue );
+            if( CRC_INPUT_SIZE_16BITS == inputSize )
+            {
+                LL_CRC_FeedData16( periphReg, (uint16_t)itemValue );
+            }
+            else
+            {
+                LL_CRC_FeedData8( periphReg, (uint8_t)itemValue );
+            }
         }
     }
 }
