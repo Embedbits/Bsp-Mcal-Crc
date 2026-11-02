@@ -608,6 +608,37 @@ void Ut_Crc_Set_InputDataSize_FeedsItemsOfConfiguredSize( void )
 
 
 /**
+ * \brief   32-bit items are read from unaligned data (bug AB#2265).
+ *
+ * \details Feeds one 32-bit item from the addresses buffer + 1, + 2 and + 3 with
+ *          32-bit input data size (one unaligned load per item, at least two of
+ *          the addresses are not word aligned). Emulated data register keeps the
+ *          written item.
+ *
+ * \par Expected results
+ * - CRC_REQUEST_OK, DR = the 4 bytes from the address in little endian order
+ *   (0x44332211, 0x55443322, 0x66554433).
+ */
+void Ut_Crc_Set_Data_32BitItemsUnaligned_LittleEndianWords( void )
+{
+    static const crc_Data_t expected[] = { 0x44332211u, 0x55443322u, 0x66554433u };
+    const uint8_t           data[]     = { 0x00u, 0x11u, 0x22u, 0x33u, 0x44u, 0x55u, 0x66u };
+    crc_Config_t            config     = Ut_Crc_Get_Config();
+
+    Ut_Crc_Init( &config );
+
+    TEST_ASSERT_EQUAL( CRC_REQUEST_OK, Crc_Set_InputDataSize( UT_CRC_ID, CRC_INPUT_SIZE_32BITS ) );
+
+    for( uint32_t itemIdx = 0u; ( sizeof( expected ) / sizeof( expected[ 0u ] ) ) > itemIdx; itemIdx++ )
+    {
+        CRC->DR = 0u;
+        TEST_ASSERT_EQUAL( CRC_REQUEST_OK, Crc_Set_Data( UT_CRC_ID, &data[ itemIdx + 1u ], sizeof( expected[ 0u ] ) ) );
+        TEST_ASSERT_EQUAL_HEX32( expected[ itemIdx ], CRC->DR );
+    }
+}
+
+
+/**
  * \brief   Independent data register is written and read back.
  *
  * \details Writes 0xA5A55A5A, reads it back.
