@@ -257,7 +257,10 @@ crc_RequestState_t Crc_Init( crc_Config_t * const crcConfig )
 
     retState = Crc_Check_Config( crcConfig );
 
-    if( CRC_REQUEST_OK == retState )
+    /* Peripheral range is checked again next to the table access - the configuration is read
+     * again after the configuration check (not proven unchanged by the compiler) */
+    if( ( CRC_REQUEST_OK == retState            ) &&
+        ( CRC_PERIPH_CNT  > crcConfig->PeriphId )    )
     {
         const crc_PeriphId_t        crcId    = crcConfig->PeriphId;
         const rcc_PeriphId_t        rccId    = crc_PeriphConf[ crcId ].PeriphRcc;
@@ -2183,7 +2186,8 @@ static void Crc_Set_State( crc_PeriphId_t crcId, crc_Data_t crcValue )
 /**
  * \brief Feeds data items to the calculation unit.
  *
- * Items are assembled from bytes (little endian), bit reversal is applied and
+ * Items are read in little endian order (a 32-bit item by one unaligned load,
+ * smaller items assembled from bytes), bit reversal is applied and
  * the items are grouped to 32-bit words (first item in the most significant
  * bits) written to the data register. Remaining items of incomplete group are
  * calculated by SW and the result is loaded to the data register.
@@ -2206,10 +2210,19 @@ static void Crc_Set_DataItems( crc_PeriphId_t crcId, const crc_DataByte_t * cons
     {
         uint32_t itemValue = 0u;
 
-        for( crc_DataCnt_t itemByte = 0u; sizeConfig->ItemSize > itemByte; itemByte ++ )
+        if( CRC_WORD_BITS == sizeConfig->ItemBits )
         {
-            itemValue |= (uint32_t)data[ byteIdx ] << ( itemByte * CRC_BITS_IN_BYTE );
-            byteIdx ++;
+            /* Data need not be aligned - CMSIS unaligned read (single LDR) */
+            itemValue = __UNALIGNED_UINT32_READ( &data[ byteIdx ] );
+            byteIdx  += sizeConfig->ItemSize;
+        }
+        else
+        {
+            for( crc_DataCnt_t itemByte = 0u; sizeConfig->ItemSize > itemByte; itemByte ++ )
+            {
+                itemValue |= (uint32_t)data[ byteIdx ] << ( itemByte * CRC_BITS_IN_BYTE );
+                byteIdx ++;
+            }
         }
 
         itemValue = Crc_Get_BitReverse( itemValue, inputOrder );

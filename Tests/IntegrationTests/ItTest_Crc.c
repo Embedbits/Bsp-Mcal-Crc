@@ -707,7 +707,10 @@ static void It_Crc_Wait_TransferEnd( crc_TransferState_t expectedState )
 {
     crc_TransferState_t xferState = CRC_TRANSFER_BUSY;
 
-    for( uint32_t loopIdx = 0u; ( IT_CRC_WAIT_LOOPS > loopIdx ) && ( CRC_TRANSFER_BUSY == xferState ); loopIdx++ )
+    for( uint32_t loopIdx = 0u;
+         ( IT_CRC_WAIT_LOOPS > loopIdx ) &&
+         ( CRC_TRANSFER_BUSY == xferState );
+         loopIdx++ )
     {
         TEST_ASSERT_EQUAL( CRC_REQUEST_OK, Crc_Get_TransferState( IT_CRC_ID, &xferState ) );
     }
